@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Primeira Corrida Solidária do Morro do Cruzeiro</title>
+  <style>
+    :root{--bg:#f7f7fb;--card:#ffffff;--accent:#2b6cb0;--muted:#666}
+    *{box-sizing:border-box;font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial}
+    body{margin:0;background:linear-gradient(180deg,#eef2fb, #f7f7fb);color:#0b1220}
+    .container{max-width:880px;margin:36px auto;padding:20px}
+    header{display:flex;gap:20px;align-items:center}
+    .logo{width:80px;height:80px;border-radius:12px;background:linear-gradient(135deg,var(--accent),#4c8bd9);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:18px}
+    h1{margin:0;font-size:1.5rem}
+    p.lead{margin:8px 0 20px;color:var(--muted)}
+    .card{background:var(--card);border-radius:12px;padding:18px;box-shadow:0 6px 22px rgba(20,30,60,0.06);margin-bottom:14px}
+    label{display:block;font-weight:600;font-size:0.9rem;margin-bottom:6px}
+    input[type=text],input[type=email],input[type=tel],input[type=date],select,textarea{width:100%;padding:10px;border:1px solid #e3e7ef;border-radius:8px;font-size:0.95rem}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .full{grid-column:1/-1}
+    .actions{display:flex;gap:8px;flex-wrap:wrap}
+    button{background:var(--accent);color:#fff;border:0;padding:10px 14px;border-radius:8px;font-weight:600;cursor:pointer}
+    button.ghost{background:transparent;border:1px solid #d6dbe8;color:var(--accent)}
+    .small{font-size:0.85rem;padding:8px 10px}
+    table{width:100%;border-collapse:collapse;margin-top:8px}
+    th,td{padding:8px;border-bottom:1px solid #f1f4f8;text-align:left;font-size:0.9rem}
+    .muted{color:var(--muted);font-size:0.85rem}
+    footer{margin-top:18px;text-align:center;color:var(--muted);font-size:0.9rem}
+    @media (max-width:700px){.row{grid-template-columns:1fr}.logo{width:64px;height:64px}}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">CRZ</div>
+      <div>
+        <h1>Primeira Corrida Solidária do Morro do Cruzeiro</h1>
+        <p class="lead">Data: 14 de dezembro • Inscrição: 1 litro de leite (doação) • Cadastre-se para participar</p>
+      </div>
+    </header>
+
+    <section class="card">
+      <h2 style="margin-top:0">Formulário de Inscrição</h2>
+      <p class="muted">Preencha seus dados abaixo e confirme que levará 1L de leite no dia do evento. Ao enviar, sua inscrição ficará armazenada localmente e poderá ser exportada pela organização.</p>
+
+      <form id="signupForm">
+        <div class="row">
+          <div>
+            <label for="nome">Nome completo *</label>
+            <input id="nome" name="nome" type="text" required />
+          </div>
+          <div>
+            <label for="telefone">Telefone *</label>
+            <input id="telefone" name="telefone" type="tel" placeholder="(43) 9xxxx-xxxx" required />
+          </div>
+          <div>
+            <label for="email">E‑mail *</label>
+            <input id="email" name="email" type="email" required />
+          </div>
+          <div>
+            <label for="nascimento">Data de nascimento</label>
+            <input id="nascimento" name="nascimento" type="date" />
+          </div>
+          <div class="full">
+            <label for="categoria">Categoria *</label>
+            <select id="categoria" name="categoria" required>
+              <option value="">Selecione</option>
+              <option value="corrida_5km">Corrida 5 km</option>
+              <option value="corrida_10km">Corrida 10 km</option>
+              <option value="caminhada">Caminhada / Participação livre</option>
+            </select>
+          </div>
+          <div class="full">
+            <label for="obs">Observações (opcional)</label>
+            <textarea id="obs" name="obs" rows="3" placeholder="Ex.: restrições alimentares, informações médicas relevantes..."></textarea>
+          </div>
+          <div class="full">
+            <label><input id="confirmMilk" type="checkbox" required />&nbsp;Confirmo que entregarei 1 litro de leite como inscrição no dia do evento *</label>
+          </div>
+        </div>
+
+        <div style="margin-top:12px" class="actions">
+          <button type="submit">Enviar inscrição</button>
+          <button type="button" id="clearBtn" class="ghost small">Limpar formulário</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2 style="margin-top:0">Lista de Inscrições (apenas visível localmente)</h2>
+      <p class="muted">As inscrições ficam salvas no navegador da organização. Use os botões para exportar ou apagar.</p>
+      <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+        <button id="exportCsv">Exportar CSV</button>
+        <button id="copyClipboard" class="ghost small">Copiar para área de transferência</button>
+        <button id="clearAll" class="ghost small">Apagar todas (local)</button>
+      </div>
+      <div id="listWrap"></div>
+    </section>
+
+    <footer>
+      <div class="muted">Organização: Comunidade do Morro do Cruzeiro • Contato: (insira o telefone/WhatsApp da organização)</div>
+    </footer>
+  </div>
+
+  <script>
+    // Simples storage local: mantém inscrições no localStorage do navegador.
+    const STORAGE_KEY = 'corrida_cruzeiro_inscricoes_v1';
+
+    function loadInscricoes(){
+      try{
+        const raw = localStorage.getItem(STORAGE_KEY);
+        return raw ? JSON.parse(raw) : [];
+      }catch(e){console.error(e);return[]}
+    }
+    function saveInscricoes(arr){ localStorage.setItem(STORAGE_KEY, JSON.stringify(arr)); }
+
+    function renderList(){
+      const list = loadInscricoes();
+      const wrap = document.getElementById('listWrap');
+      if(list.length===0){ wrap.innerHTML = '<div class="muted">Nenhuma inscrição registrada ainda.</div>'; return }
+      let html = '<table><thead><tr><th>Nome</th><th>Telefone</th><th>E-mail</th><th>Categoria</th><th>Obs</th></tr></thead><tbody>';
+      for(const s of list){
+        html += <tr><td>${escapeHtml(s.nome)}</td><td>${escapeHtml(s.telefone)}</td><td>${escapeHtml(s.email)}</td><td>${escapeHtml(friendlyCategoria(s.categoria))}</td><td>${escapeHtml(s.obs||'')}</td></tr>;
+      }
+      html += '</tbody></table>';
+      wrap.innerHTML = html;
+    }
+
+    function friendlyCategoria(code){
+      return {'corrida_5km':'Corrida 5 km','corrida_10km':'Corrida 10 km','caminhada':'Caminhada / Participação livre'}[code]||code;
+    }
+
+    function escapeHtml(s){ if(!s) return ''; return s.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;') }
+
+    document.getElementById('signupForm').addEventListener('submit', function(e){
+      e.preventDefault();
+      const nome = document.getElementById('nome').value.trim();
+      const telefone = document.getElementById('telefone').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const nascimento = document.getElementById('nascimento').value;
+      const categoria = document.getElementById('categoria').value;
+      const obs = document.getElementById('obs').value.trim();
+      const milk = document.getElementById('confirmMilk').checked;
+      if(!nome || !telefone || !email || !categoria || !milk){ alert('Preencha todos os campos obrigatórios e confirme a doação.'); return }
+      const insc = {nome, telefone, email, nascimento, categoria, obs, timestamp: new Date().toISOString()};
+      const arr = loadInscricoes();
+      arr.push(insc);
+      saveInscricoes(arr);
+      renderList();
+      alert('Inscrição registrada localmente. A organização pode exportar as inscrições como CSV.')
+      this.reset();
+    });
+
+    document.getElementById('clearBtn').addEventListener('click', ()=> document.getElementById('signupForm').reset());
+    document.getElementById('clearAll').addEventListener('click', ()=>{
+      if(confirm('Apagar todas as inscrições salvas localmente?')){ localStorage.removeItem(STORAGE_KEY); renderList(); }
+    });
+
+    document.getElementById('exportCsv').addEventListener('click', ()=>{
+      const arr = loadInscricoes();
+      if(arr.length===0){ alert('Nenhuma inscrição para exportar.'); return }
+      const header = ['Nome','Telefone','E-mail','Data de Nascimento','Categoria','Observações','Timestamp'];
+      const rows = arr.map(r=>[r.nome,r.telefone,r.email,r.nascimento||'',friendlyCategoria(r.categoria),r.obs||'',r.timestamp||'']);
+      const csv = [header, ...rows].map(r=>r.map(cell=>"${String(cell).replace(/"/g,'""')}").join(',')).join('\n');
+      const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'inscricoes_corrida_cruzeiro.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    });
+
+    document.getElementById('copyClipboard').addEventListener('click', async ()=>{
+      const arr = loadInscricoes();
+      if(arr.length===0){ alert('Nenhuma inscrição para copiar.'); return }
+      const text = arr.map(r=>${r.nome} | ${r.telefone} | ${r.email} | ${r.nascimento||''} | ${friendlyCategoria(r.categoria)} | ${r.obs||''}).join('\n');
+      try{ await navigator.clipboard.writeText(text); alert('Lista copiada para a área de transferência.'); }catch(e){ alert('Não foi possível copiar automaticamente. Use Exportar CSV.'); }
+    });
+
+    // Inicializa visualização
+    renderList();
+  </script>
+
+  <!--
+    INSTRUÇÕES RÁPIDAS:
+    - Salve este arquivo como index.html e abra no navegador para testar localmente.
+    - Para publicar: envie para GitHub Pages, Netlify ou Vercel (arraste o arquivo). Ou use Hospedagem da sua prefeitura/associação.
+    - Se quiser que eu adicione: integração com Google Sheets, autenticação, envio de e-mail automático ou layout personalizado, diga o que prefere e eu adapto.
+  -->
+</body>
+</html>
